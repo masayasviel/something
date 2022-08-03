@@ -1,25 +1,29 @@
+/** 依存性注入クラスの型 */
 interface Type<T> extends Function {
     new (...args: any[]): T;
 }
 
+/** DIマッピング用 */
 const DIMapper = new Map<string, Object>();
 
-function di(_constructor: Type<any>) {
+/** クラスにつけるデコレータ */
+function mapping(_constructor: Type<any>) {
     DIMapper.set(_constructor.name, new _constructor())
 }
 
-function ch (arg: string) {
+/** プロパティに依存性を注入するデコレータ */
+function inject (arg: string) {
     return (target: any, member: string): any => {
         return {
-            configurable: false,
-            enumerable: false,
+            configurable: true,
+            enumerable: true,
             value: DIMapper.get(arg),
             writable: true
         };
     };
 }
 
-@di
+@mapping
 class A {
     prop: string;
     constructor() {
@@ -27,28 +31,35 @@ class A {
     }
 }
 
-@di
+@mapping
 class B {
-    @ch('A') private aaa!: A;
-    constructor() {}
-
-    getAaa() {
+    @inject('A') private aaa!: A;
+    constructor() {
+        console.log("A in B")
         console.log(this.aaa)
+    }
+
+    get ap(): A {
+        return this.aaa;
     }
 }
 
-@di
+@mapping
 class C {
-    @ch('B') private bbb!: B;
+    @inject('B') private bbb!: B;
 
-    constructor() {}
+    constructor() {
+        console.log("B in C")
+        console.log(this.bbb)
+    }
 
-    getBbb() {
-        this.bbb.getAaa()
+    get bp(): B {
+        return this.bbb;
     }
 }
 
 console.log(Array.from(DIMapper.entries()))
 
 const ccc = DIMapper.get('C')! as C;
-ccc.getBbb()
+console.log(ccc.bp)
+console.log(ccc.bp.ap)
